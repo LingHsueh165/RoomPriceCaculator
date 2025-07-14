@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>宿泊料金計算</title>
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+  <style>
+    h1{
+      color: #0c5dd7;
+    }
+    body {
+      font-family: sans-serif;
+      margin: 2rem;
+    }
+    label {
+      display: block;
+      margin-top: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    input, select, button {
+      margin-top: 0.5rem;
+      padding: 0.4rem;
+    }
+    button:not(.delete-button) {
+      background: linear-gradient(to right, #1976d2, #42a5f5);
+      color: white;
+      border: 2px solid #1976d2;
+      border-radius: 5px;
+      margin-bottom: 2rem;
+      transition: background 0.3s, border-color 0.3s;
+    }
+    button:not(.delete-button):hover {
+      background: linear-gradient(to right, #1565c0, #1e88e5);
+      border-color: #0d47a1;
+      cursor: pointer;
+    }
+    #new_room {  /* 追加ボタン */
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      background: #449bff;
+      border: none;
+      border-radius: 3px;
+      margin-bottom: 0.5rem;
+    }
+    #new_room:hover {
+      background: #1e6dc6;
+      border: none;
+      border-radius: 3px;
+      margin-bottom: 0.5rem;
+    }
+    .delete-button {  /* 削除ボタン */
+      background-color: #e53935;
+      color: white;
+      border: none;
+      margin-top: 1rem;
+      padding: 0.3rem 0.6rem;
+      border-radius: 3px;
+      font-size: 0.9rem;
+      align-self: flex-end;
+    }
+    .delete-button:hover {
+      background-color: #c62828;
+      cursor: pointer;
+    }
+    .room {  /* 部屋ごと一つのボックスに入れる */
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      margin-bottom: 0.5rem;
+      padding: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background-color: #fafafa;
+      transition: background-color 0.3s;
+    }
+    .room:hover {
+      background-color: #e9f3ff;
+    }
+    .room-row {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+    .room-row label {
+      flex-grow: 1;
+    }
+    .child-options {  /* A～Dまでの入力バー */
+      display: flex;
+      gap: 3rem;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+    .child-options label {
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      white-space: nowrap;
+    }
+    .child-options input[type="number"] {
+      width: 7rem;
+    }
+    #result {  /* 計算結果のブロック */
+      margin-top: 2rem;
+      border-top: 1px solid #ccc;
+      padding-top: 1rem;
+    }
+    #result:hover {
+      background-color: #f1f8ff;
+      transition: background-color 0.3s;
+    }
+    .hidden {
+      display: none;
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: bold;
+    }
+    details[open] summary::after {
+      content: " ▲";
+    }
+    summary::after {
+      content: " ▼";
+      margin-left: 0.5em;
+    }
+    pre {
+      white-space: pre-wrap;
+      background-color: #f9f9f9;
+      padding: 1rem;
+      border-radius: 5px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <h1>宿泊料金試算ツール</h1>
+
+  <label>料金表：
+    <select id="guestType" onchange="loadPriceTable()">
+      <option value="jp">日本人</option>
+      <option value="en">外国人</option>
+      <option value="wedding">婚礼ゲスト</option>
+    </select>
+  </label>  
+
+  <label>
+    チェックイン日：<br>
+    <input type="date" id="checkInDate" value="">
+  </label>
+
+  <label>
+    泊数：<br>
+    <input type="number" id="nights" min="1" value="1">
+  </label>
+
+  <div id="roomsContainer">
+    <div class="room">
+      <div class="room-row">
+        <label>
+          ルームタイプ：<br>
+          <select class="room-type" onchange="updateRoomCapacity(this)">
+            <option value="ツイン">ツイン</option>
+            <option value="グランビュー">グランビュー</option>
+            <option value="細流亭モ和室">細流亭モ和室</option>
+            <option value="細流亭和ツイ">細流亭和ツイ</option>
+            <option value="深山亭4～8階">深山亭4～8階</option>
+            <option value="深山亭1～3階">深山亭1～3階</option>
+            <option value="桂亭(深山亭G階)">桂亭(深山亭G階)</option>
+            <option value="孝楽">孝楽</option>
+            <option value="野楽・話楽・湯話">野楽・話楽・湯話</option>
+            <option value="燦里Comfort">燦里Comfort</option>
+            <option value="燦里Suite">燦里Suite</option>
+            <option value="福地A">福地A</option>
+            <option value="福地B">福地B</option>
+            <option value="明見A">明見A</option>
+            <option value="明見B">明見B</option>
+            <option value="瑞穂">瑞穂</option>
+            <option value="貴賓室">貴賓室</option>
+          </select>
+        </label>
+        <label>
+          大人：<br>
+          <input type="number" class="adult-count" min="0" value="2">
+        </label>
+        <label class="meal-plan hidden">
+          プラン：<br>
+          <select class="meal-select">
+            <option value="１泊２食付">１泊２食付</option>
+            <option value="１泊朝食付">１泊朝食付</option>
+          </select>
+        </label>
+        <label class="sasa-plan hidden">
+          プラン：
+          <select class="sasa-select">
+            <option value="qua-plan">QUALITYプラン</option>
+            <option value="anni-plan">SASA-ANNIVERSARYプラン</option>
+          </select>
+        </label>
+        <label class="kihin-plan hidden">
+          プラン：
+          <select class="kihin-select">
+            <option value="no-plan">なし</option>
+            <option value="PRanni-plan">プレミアムアニバーサリー</option>
+          </select>
+        </label>
+        <br>
+      </div>
+      <div class="child-options">
+        <label>A. 小学生　：<input type="number" class="child-a" min="0" value="0"></label>
+        <label>B. 幼児　　：<input type="number" class="child-b" min="0" value="0"></label>
+        <label>C. 寝具のみ：<input type="number" class="child-c" min="0" value="0"></label>
+        <label>D. 乳児　　：<input type="number" class="child-d" min="0" value="0"></label>
+      </div>
+    </div>
+  </div>
+
+  <button id="new_room" onclick="newRoom()">追加</button>
+  <div><br></div>
+  <button onclick="calculatePrice()">計算</button>
+  <button onclick="clearAllContent()">リセット</button>
+
+  <div id="result" class="hidden">
+    <h2>計算結果</h2>
+    <p id="totalPrice">総額：- 円</p>
+    <details>
+      <summary>📋 料金内訳（クリックして！）</summary>
+      <pre id="calculationLog"></pre>
+    </details>
+  </div>
+
+  <script src="priceCalendar_2025.js"></script>
+
+  <script>
+    const capacityLimit = {
+      "ツイン": 2,
+      "グランビュー": 3,
+      "細流亭モ和室": 3,
+      "細流亭和ツイ": 3,
+      "孝楽": 2,
+      "燦里Suite": 5,
+      "福地A": 5,
+      "福地B": 5,
+      "明見A": 2,
+      "明見B": 2,
+      "瑞穂": 3,
+    }; /* 各部屋タイプの人数上限 */
+
+    function updateRoomCapacity(selectElement) {  /* 部屋タイプを変更する時人数上限を同時に更新 */
+      const roomBlock = selectElement.closest('.room');
+      const adultInput = roomBlock.querySelector('.adult-count');
+      const selectedRoom = selectElement.value;
+      const sasaPlan = roomBlock.querySelector(".sasa-select")?.value;
+      let capacity = 5;
+
+      adultInput.max = capacity;
+      if (sasaPlan === "anni-plan") {
+      	capacity = 2;
+      } 
+      else {
+      	capacity = capacityLimit[selectedRoom] || 5;
+      }
+
+      adultInput.max = capacity;
+      if (parseInt(adultInput.value) > capacity) {
+      	adultInput.value = capacity;
+      	alert('宿泊人数オーバー！');
+      }
+      adultInput.oninput = () => {
+        if (parseInt(adultInput.value) > capacity) {
+          adultInput.value = capacity;
+          alert('宿泊人数オーバー！');
+        }
+      };
+      upadateSasaPlanVisibility();
+      hideBedOnlyOption();
+    }
+
+    function updateMealPlanVisibility() { /* 婚礼ゲストに変更する時「朝食のみ」の選択肢を出す */
+      const guestType = document.getElementById("guestType").value;
+      
+      const isWedding = guestType === "wedding";
+      document.querySelectorAll(".meal-plan").forEach(label => {
+        label.classList.toggle("hidden", !isWedding);
+      });
+    }
+
+    function upadateSasaPlanVisibility() {  /* ささの部屋に変更する時「プラン」の選択肢を出す */
+      const guestType = document.getElementById("guestType").value;
+
+      document.querySelectorAll(".room").forEach(room => {
+        const roomType = room.querySelector(".room-type")?.value;
+        const sasaPlanLabel = room.querySelector(".sasa-plan");
+        const sasaRoom = ["福地A", "福地B", "明見A", "明見B", "瑞穂"];
+
+        if (roomType && sasaPlanLabel) {
+          const shouldShow = guestType === "jp" && sasaRoom.includes(roomType);
+          sasaPlanLabel.classList.toggle("hidden", !shouldShow);
+        }
+      });
+    }
+
+    function hideBedOnlyOption(){ /* 燦里～貴賓室の部屋は「寝具のみ」の選択肢を非表示 */
+      const guestType = document.getElementById("guestType").value;
+
+      document.querySelectorAll(".room").forEach(room => {
+        const roomType = room.querySelector(".room-type")?.value;
+        const noBedOnlyRoom = ["福地A", "福地B", "明見A", "明見B", "瑞穂", "貴賓室"];
+        const childCOption = room.querySelector('.child-options label:nth-child(3)');
+
+        if (noBedOnlyRoom.includes(roomType)){
+          childCOption.style.display = 'none';
+        }
+        else {
+          childCOption.style.display = 'block';
+        }
+      });
+    }
+
+    function updateRoomTypeOptions(guestType) { /* 婚礼ゲストに変更する時選択できる部屋タイプを同時に更新 */
+      const roomTypeSelects = document.querySelectorAll('.room-type');
+
+      roomTypeSelects.forEach(select => {
+        const selectedValue = select.value;
+        select.innerHTML = '';  // 元の選択肢をクリア
+
+        const roomOptions = guestType === 'wedding'
+          ? Object.keys(window.priceTable)  // 婚礼ゲストの値段表にある部屋タイプのみ保留
+          : [
+              "ツイン", "グランビュー", "細流亭モ和室", "細流亭和ツイ", "深山亭4～8階", "深山亭1～3階",
+              "桂亭(深山亭G階)", "孝楽", "野楽・話楽・湯話", "燦里Comfort", "燦里Suite",
+              "福地A", "福地B", "明見A", "明見B", "瑞穂", "貴賓室"
+            ];
+
+        roomOptions.forEach(room => {
+          const option = document.createElement('option');
+          option.value = room;
+          option.textContent = room;
+          select.appendChild(option);
+        });
+
+        // 元の選択肢は新しいリストにある場合も保留
+        if (roomOptions.includes(selectedValue)) {
+          select.value = selectedValue;
+        }
+      });
+    }
+
+    function loadPriceTable() { /* お客様の種類によって値段表を読み込む */
+      const guestType = document.getElementById("guestType").value;
+
+      delete window.priceTable; // 元のpriceTableをクリア（元のデータが残すとエラーになるかも）
+      // 元のscriptも削除（再読み込みを控え）
+      const oldScript = document.getElementById("priceTableScript");
+      if (oldScript) {
+        oldScript.remove();
+      }
+
+      // 新しいscriptを追加
+      const script = document.createElement("script");
+      script.src = `priceData_${guestType}.js`;
+      script.id = "priceTableScript"; // ← 次回以降はこれで削除の判断に使う
+      script.onload = () => {
+        updateRoomTypeOptions(guestType); // ✅ ここに追加
+        updateMealPlanVisibility();       // ✅ 「朝食のみ」の選択肢もここで呼ぶ
+        upadateSasaPlanVisibility();
+        hideBedOnlyOption();
+
+        // 婚礼ゲストは一泊のみ
+        const nightsInput = document.getElementById("nights");
+        if (guestType === "wedding"){
+          nightsInput.max = 1;
+          if (parseInt(nightsInput.value) > 1){
+              nightsInput.max = 1;
+          }
+        }
+        else {
+          nightsInput.removeAttribute("max");
+        }
+      };
+      document.head.appendChild(script);
+    }
+
+    function getPeopleCountKey(adults, roomType, mealPlan = null, sasaPlan = null) {  /* 宿泊人数のキーを読み込む（値段判断に使う） */
+      let dataLevel = window.priceTable[roomType];
+
+      if (sasaPlan && dataLevel?.[sasaPlan]) {
+      	dataLevel = dataLevel[sasaPlan];
+      } 
+      else if (mealPlan && dataLevel?.[mealPlan]) {
+      	dataLevel = dataLevel[mealPlan];
+      }
+	
+      const keys = Object.keys(dataLevel || {});
+      console.log(`🔍 人数キー確認: ${roomType} / ${mealPlan} / ${sasaPlan} → 選択肢:`, keys);
+      
+      const key = `${adults}名`;
+      if (keys.includes(key)) return key;
+
+      for (let i = adults; i >= 2; i--) {
+      	const fallback = `${i}名以上`;
+      	if (keys.includes(fallback)) return fallback;
+      }
+
+      console.warn(`⚠️ 人数キー見つかりません: ${roomType} / ${mealPlan} / ${sasaPlan} / ${adults}名`);
+      return null;
+    }
+
+    function newRoom() {  /* 部屋追加 */
+      const container = document.getElementById("roomsContainer");
+      const newDiv = document.createElement("div");
+      newDiv.classList.add("room");
+      newDiv.innerHTML = `
+          <div class="room-row">
+            <label>
+            ルームタイプ：<br>
+            <select class="room-type" onchange="updateRoomCapacity(this)">
+              <option value="ツイン">ツイン</option>
+              <option value="グランビュー">グランビュー</option>
+              <option value="細流亭モ和室">細流亭モ和室</option>
+              <option value="細流亭和ツイ">細流亭和ツイ</option>
+              <option value="深山亭4～8階">深山亭4～8階</option>
+              <option value="深山亭1～3階">深山亭1～3階</option>
+              <option value="桂亭(深山亭G階)">桂亭(深山亭G階)</option>
+              <option value="孝楽">孝楽</option>
+              <option value="野楽・話楽・湯話">野楽・話楽・湯話</option>
+              <option value="燦里Comfort">燦里Comfort</option>
+              <option value="燦里Suite">燦里Suite</option>
+              <option value="福地A">福地A</option>
+              <option value="福地B">福地B</option>
+              <option value="明見A">明見A</option>
+              <option value="明見B">明見B</option>
+              <option value="瑞穂">瑞穂</option>
+              <option value="貴賓室">貴賓室</option>
+            </select>
+          </label>
+          <label>
+            大人：<br>
+            <input type="number" class="adult-count" min="0" value="2">
+          </label>
+          <label class="meal-plan hidden">
+            プラン：<br>
+            <select class="meal-select">
+              <option value="１泊２食付">１泊２食付</option>
+              <option value="１泊朝食付">１泊朝食付</option>
+            </select>
+          </label>
+          <label class="sasa-plan hidden">
+            プラン：
+            <select class="sasa-select">
+              <option value="qua-plan">QUALITYプラン</option>
+              <option value="anni-plan">SASA-ANNIVERSARYプラン</option>
+            </select>
+         </label>
+         <label class="kihin-plan hidden">
+          プラン：
+          <select class="kihin-select">
+            <option value="no-plan">なし</option>
+            <option value="PRanni-plan">プレミアムアニバーサリー</option>
+          </select>
+        </label>
+          <br>
+        </div>
+        <div class="child-options">
+          <label>A. 小学生　：<input type="number" class="child-a" min="0" value="0"></label>
+          <label>B. 幼児　　：<input type="number" class="child-b" min="0" value="0"></label>
+          <label>C. 寝具のみ：<input type="number" class="child-c" min="0" value="0"></label>
+          <label>D. 乳児　　：<input type="number" class="child-d" min="0" value="0"></label>
+        </div>
+        <button class="delete-button" onclick="deleteRoom(this)">削除</button>
+      `;
+      container.appendChild(newDiv);
+      updateRoomCapacity(newDiv.querySelector('.room-type'));
+      updateRoomTypeOptions(document.getElementById("guestType").value);
+      updateMealPlanVisibility();
+      upadateSasaPlanVisibility();
+      hideBedOnlyOption();
+    }
+
+    function deleteRoom(button) { /* 部屋追加 */
+      const roomDiv = button.closest(".room");
+      roomDiv.remove();
+    }
+
+    function setDefaultDate() { /* デフォルトの日付を当日の日付にする */
+      const getToday = new Date();
+      const y = getToday.getFullYear();
+      const m = getToday.getMonth() + 1;
+      const d = getToday.getDate();
+      const today = y + "-" + m.toString().padStart(2,'0') + "-" + d.toString().padStart(2,'0');
+      document.getElementById("checkInDate").setAttribute("value",today);
+    }
+
+    function calculatePrice() { /* 料金計算 */
+      const guestType = document.getElementById("guestType").value;
+      const date = document.getElementById('checkInDate').value;
+      const nights = parseInt(document.getElementById('nights').value);
+      const mealPlans = document.querySelectorAll(".meal-select");
+      const sasaPlans = document.querySelectorAll(".sasa-select");
+      const roomTypes = document.querySelectorAll('.room-type');
+      const adultCounts = document.querySelectorAll('.adult-count');
+      const childAInputs = document.querySelectorAll('.child-a');
+      const childBInputs = document.querySelectorAll('.child-b');
+      const childCInputs = document.querySelectorAll('.child-c');
+      const childDInputs = document.querySelectorAll('.child-d');
+
+      /*  */
+      let total = 0;
+      let log = `🏨 宿泊情報\n`;
+      log += `📅 チェックイン日：${date}\n`;
+      log += `🌙 泊数：${nights} 泊\n`;
+
+      for (let i = 0; i < roomTypes.length; i++) {        
+        const adults = parseInt(adultCounts[i].value) || 0;
+        const childrenA = parseInt(childAInputs[i]?.value) || 0;
+        const childrenB = parseInt(childBInputs[i]?.value) || 0;
+        const childrenC = parseInt(childCInputs[i]?.value) || 0;
+        const childrenD = parseInt(childDInputs[i]?.value) || 0;
+        const roomType = roomTypes[i].value;    
+        const mealPlan = guestType === "wedding"
+          ? mealPlans[i]?.value        // 「婚礼ゲスト」のみこれを使う
+          : null;              // 他はこれを使う
+        const sasaPlan = sasaPlans[i]?.closest(".sasa-plan")?.classList.contains("hidden") ? null : sasaPlans[i]?.value;
+        const peopleCount = getPeopleCountKey(adults, roomType, mealPlan, sasaPlan);
+        const checkInDate = new Date(date);
+        const dateKey = checkInDate.toISOString().split("T")[0];
+        const seasonKey = window.priceCalendar[dateKey] || "平日"; // なしの場合を平日扱い
+        console.log(`📅 宿泊日：${dateKey}（分類：${seasonKey}）`);
+        const basePrice = sasaPlan
+          ? priceTable[roomType]?.[sasaPlan]?.[peopleCount]?.[seasonKey]
+          : guestType === "wedding"
+            ? priceTable[roomType]?.[mealPlan]?.[peopleCount]?.[seasonKey]
+            : priceTable[roomType]?.[peopleCount]?.[seasonKey];   
+        
+        if (roomTypes.length === 0) {
+          alert('部屋を追加してください！');
+          return;
+        };
+        if (adults > capacityLimit[roomType]) {
+          log += `❌ 部屋 ${i + 1}：${roomType} は人数オーバーしました（最大大人 ${capacityLimit[roomType]} 名）\n`;
+          log += `-----------------------------------\n`;
+          continue;
+        }
+        
+        console.log(peopleCount);
+        if (!peopleCount){
+            log += `⚠️ 対応する料金が見つかりません！`
+            continue;
+        }  
+        if (!basePrice) {
+          log += `⚠️ 部屋 ${i + 1}：対応する料金が見つかりません！ ${roomType}／${mealPlan}／${peopleCount}／${seasonKey} \n`;
+          log += `-----------------------------------\n`;
+          continue;
+        }
+
+        let totalBeforeTax = basePrice * nights * adults;
+        totalBeforeTax += basePrice * nights * 0.7 * childrenA;
+        totalBeforeTax += basePrice * nights * 0.5 * childrenB;
+
+        // ⚠️ C：ルームタイプ制限あり
+        const disallowedForC = ["貴賓室", "福地A", "福地B", "明見A", "明見B", "瑞穂"];
+        if (!disallowedForC.includes(roomType)) {
+          totalBeforeTax += basePrice * nights * 0.3 * childrenC;
+        }
+
+        // ⚠️ D：料金表不要な計算
+        const premiumForD = ["燦里Comfort", "燦里Suite", "貴賓室", "福地A", "福地B", "明見A", "明見B", "瑞穂"];
+        let babyUnit = premiumForD.includes(roomType) ? 8000 : 5000;
+        if (seasonKey === "年末年始") {
+          babyUnit = premiumForD.includes(roomType) ? 10000 : 6000;
+        }
+        totalBeforeTax += babyUnit * nights * childrenD;
+
+        const tax = totalBeforeTax * 0.1;
+        const bathingTax = adults * 150 * nights;
+        const roomTotal = Math.round(totalBeforeTax + tax + bathingTax);
+        total += roomTotal;
+
+        log += `🛏️ 部屋 ${i + 1}\n`;
+        log += `・ルームタイプ：${roomType}\n`;
+        log += `・大人：${adults} 名\n`;
+        log += `・子供明細：小学生 ${childrenA}、幼児 ${childrenB}、寝具のみ ${childrenC}、乳児 ${childrenD}\n`;
+        log += `・条件：${peopleCount}｜${seasonKey}｜一泊 ¥${basePrice} 円\n`;
+        log += `・料金内訳：\n`;
+        log += `  　　　大人 × ${adults} 名\n`;
+        log += `  　　　小学生 × ${childrenA} 名（70%）\n`;
+        log += `  　　　幼児 × ${childrenB} 名（50%）\n`;
+        log += `  　　　寝具のみ × ${childrenC} 名（30%）\n`;
+        log += `  　　　乳児 × ${childrenD} 名（固定 ${babyUnit} 円）\n`;
+        log += `・料金：¥${Math.round(totalBeforeTax)}\n`;
+        log += `・消費税（10%）：¥${Math.round(tax)}\n`;
+        log += `・入湯税：¥${bathingTax}\n`;
+        log += `・総額：¥${roomTotal}\n`;
+        log += `-----------------------------------\n`;
+      }
+
+      log += `✅ 合計：¥${total.toLocaleString()}`;
+      document.getElementById('totalPrice').textContent = `✅ 合計料金：¥${total.toLocaleString()} 円`;
+      document.getElementById('calculationLog').textContent = log;
+      document.getElementById('result').classList.remove('hidden');
+      document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function clearAllContent(){ /* 入力内容をクリア */
+      //document.getElementById('checkInDate').value = "";
+      setDefaultDate();
+      document.getElementById("nights").value = 1;
+      document.getElementById("result").classList.add("hidden");
+      document.getElementById("guestType").value = "jp";
+      const container = document.getElementById("roomsContainer");
+      container.innerHTML = "";
+      newRoom();
+
+      loadPriceTable();
+      updateRoomTypeOptions("jp");
+      updateMealPlanVisibility();
+      upadateSasaPlanVisibility();
+      hideBedOnlyOption();
+    }
+
+    // ✅ デフォルト設定
+    window.addEventListener('DOMContentLoaded', () => {
+      const firstSelect = document.querySelector('.room-type');
+
+      if (firstSelect) {
+        updateRoomCapacity(firstSelect);
+      }
+      loadPriceTable();
+      setDefaultDate();
+    });
+
+  </script>
+</body>
+</html>
+
